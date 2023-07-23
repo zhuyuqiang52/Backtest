@@ -1,22 +1,21 @@
 #include "portfolio.h"
 
 int main() {
-	//ALB
-	data_frame<std::string> ALB = data_frame<std::string>::read_csv("E:\\study\\22fall\\hf\\data\\hw1\\ALB.csv", 0).get_columns({ "Close" });
-
-	ALB.head(10);
-	//GOOG
-	data_frame<std::string> GOOG = data_frame<std::string>::read_csv("E:\\study\\22fall\\hf\\data\\hw1\\GOOG.csv", 0).get_columns({ "Close" });
-	//GOOG.head(10);
-	data_frame<std::string> NIO = data_frame<std::string>::read_csv("E:\\study\\22fall\\hf\\data\\hw1\\NIO.csv", 0).get_columns({ "Close" });
-	//NIO.head(10);
-	data_frame<std::string> XOM = data_frame<std::string>::read_csv("E:\\study\\22fall\\hf\\data\\hw1\\XOM.csv", 0).get_columns({ "Close" });
-	data_frame<std::string> cmb = GOOG.left_join(ALB);
-	cmb = cmb.left_join(NIO);
-	cmb = cmb.left_join(XOM);
+	//alb
+	data_frame<std::string> alb = data_frame<std::string>::read_csv("e:\\study\\22fall\\hf\\data\\hw1\\alb.csv", 0).get_columns({ "close" });
+	alb.head(10);
+	//goog
+	data_frame<std::string> goog = data_frame<std::string>::read_csv("e:\\study\\22fall\\hf\\data\\hw1\\goog.csv", 0).get_columns({ "close" });
+	//goog.head(10);
+	data_frame<std::string> nio = data_frame<std::string>::read_csv("e:\\study\\22fall\\hf\\data\\hw1\\nio.csv", 0).get_columns({ "close" });
+	//nio.head(10);
+	data_frame<std::string> xom = data_frame<std::string>::read_csv("e:\\study\\22fall\\hf\\data\\hw1\\xom.csv", 0).get_columns({ "close" });
+	data_frame<std::string> cmb = goog.left_join(alb);
+	cmb = cmb.left_join(nio);
+	cmb = cmb.left_join(xom);
 	//std::cout<<"\nna removed"<<std::endl;
 	data_frame<std::string> cmb_rmna_df = cmb.dropna(0, "any");
-	cmb_rmna_df.set_column_names({ "GOOG","ALB","NIO","XOM" });
+	cmb_rmna_df.set_column_names({ "goog","alb","nio","xom" });
 	//cmb_rmna_df.head(300);
 	//portfolio setting
 	Eigen::MatrixXd weight_mx(4, 4);
@@ -24,7 +23,7 @@ int main() {
 		0.35, 0.15, 0.25, 0.25,
 		0.15, 0.25, 0.35, 0.25,
 		0.35, 0.35, 0.15, 0.15;
-	data_frame<std::string> weight_df(weight_mx, { "GOOG","ALB","NIO","XOM" }, { "2021-09-14","2021-12-20","2022-03-01","2022-06-01" });
+	data_frame<std::string> weight_df(weight_mx, { "goog","alb","nio","xom" }, { "2021-09-14","2021-12-20","2022-03-01","2022-06-01" });
 	weight_df.head(10);
 
 	//trasform index

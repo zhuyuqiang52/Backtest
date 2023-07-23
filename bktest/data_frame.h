@@ -26,6 +26,7 @@ public:
     static boost::posix_time::ptime string_to_ptime(std::string time_str);
     template <typename U>
     static data_frame<U> set_index(data_frame<T>& lhs, std::vector<U>& index);
+    void set_index(std::vector<T> index);
     void assign_index(std::vector<T> new_index);
     Eigen::MatrixXd get_data() const;
     std::vector<std::string> get_column_names();
@@ -33,24 +34,25 @@ public:
     void set_data(Eigen::MatrixXd data);
     void set_column_names(std::vector<std::string> column_names);
     //data info
-    int row() const;
-    int col() const;
+    int rows() const;
+    int cols() const;
     //data selection
     data_frame<T> get_columns(const std::vector<std::string> column_names) const;
     data_frame<T> get_columns(const std::vector<int> column_index) const;
     data_frame<T> get_rows(const std::vector<T> index) const;
     data_frame<T> get_rows(const std::vector<int> index) const;
     data_frame<T> get_rows(T index) const;
+    data_frame<T> get_rows(int index) const;
     //data modification
     void insert_row(const int row_index, const T idx, const Eigen::MatrixXd& row);
     data_frame<T> dropna(const int axis = 0, const std::string how = "any");
-    double& operator()(const int row_index, const int col_index) const;
+    double& operator()(const int row_index, const int col_index);
     //data view
     void head(const int n) const;
     void tail(const int n) const;
     //data concat
     data_frame<T> left_join(data_frame<T>& df2) const;
-    void row_concat(data_frame<T>& df2) const;
+    void row_concat(data_frame<T>& df2);
     //computing function
     data_frame<T> log();
     data_frame<T> exp();
@@ -58,12 +60,12 @@ public:
 };
 
 template <typename T>
-int data_frame<T>::row() const {
+int data_frame<T>::rows() const {
     return this->data.rows();
 }
 
 template <typename T>
-int data_frame<T>::col() const {
+int data_frame<T>::cols() const {
     return this->data.cols();
 }
 
@@ -87,7 +89,7 @@ void data_frame<T>::assign_index(std::vector<T> new_index) {
 }
 template <typename T>
 Eigen::MatrixXd data_frame<T>::get_data() const {
-    Eigen::MatrixXd data_copy = this->data;
+    Eigen::MatrixXd data_copy(this->data);
     return data_copy;
 }
 template <typename T>
@@ -123,7 +125,13 @@ data_frame<U> data_frame<T>::set_index(data_frame<T>& lhs, std::vector<U>& index
     df.assign_index(index);
     return df;
 }
-
+template <typename T>
+void data_frame<T>::set_index(std::vector<T> index) {
+if (index.size() != this->data.rows()) {
+		std::cerr << "Number of index values does not match number of rows in data" << std::endl;
+	}
+	this->index = index;
+}
 //read fucntions must submit index column type
 template <typename T>
 data_frame<T> data_frame<T>::read_csv(std::string file_path, const int index_col) {
@@ -191,8 +199,8 @@ void data_frame<T>::head(const int n) const {
     int row_idx = 0;
     int col_idx = 0;
     //print column names
-    int num_col = data.cols();
-    int num_row = data.rows();
+    int num_col = this->cols();
+    int num_row = this->rows();
     std::cout << "Columns: ";
     while (col_idx < num_col) {
         std::cout << this->column_names[col_idx] << " ";
@@ -238,27 +246,27 @@ void data_frame<T>::tail(const int n) const {
 
 //data selection
 //get columns basing on column names allowing non-exist columns which will be filled with nan
-template <typename T>
-data_frame<T> data_frame<T>::get_columns(const std::vector<std::string> column_names) const {
+template <typename t>
+data_frame<t> data_frame<t>::get_columns(const std::vector<std::string> _column_names) const {
     std::vector<int> column_indices;
     std::vector<std::string> col_names;
     std::vector<std::string> col_names_unfound;
-    Eigen::MatrixXd data_copy(this->row(), column_names.size(), std::numeric_limits<double>::quiet_NaN()));
-    for (size_t i = 0; i < column_names.size(); ++i) {
+    Eigen::MatrixXd data_copy = Eigen::MatrixXd::Constant(this->rows(), _column_names.size(), std::numeric_limits<double>::quiet_NaN());
+    for (size_t i = 0; i < _column_names.size(); ++i) {
         int col_idx = 0;
         while (col_idx < this->column_names.size()) {
-            if (column_names[i] == this->column_names[col_idx]) {
+            if (_column_names[i] == this->column_names[col_idx]) {
                 data_copy.col(i) = this->data.col(col_idx);
-                ;               break;
+                break;
             }
             ++col_idx;
         }
     }
-    data_frame data_frame_copy(data_copy, column_names, this->index);
+    data_frame<t> data_frame_copy(data_copy, _column_names, this->index);
     return data_frame_copy;
 }
-template <typename T>
-data_frame<T> data_frame<T>::get_columns(const std::vector<int> column_index) const {
+template <typename t>
+data_frame<t> data_frame<t>::get_columns(const std::vector<int> column_index) const {
     std::vector<std::string> column_names;
     for (size_t i = 0; i < column_index.size(); ++i) {
         column_names.push_back(this->column_names[column_index[i]]);
@@ -305,6 +313,15 @@ data_frame<T> data_frame<T>::get_rows(T index) const {
         throw std::runtime_error("the target index is not in the data frame");
     }
     data_frame<T> data_frame_copy(this->data.row(i), this->column_names, { index });
+    return data_frame_copy;
+};
+
+template <typename T>
+data_frame<T> data_frame<T>::get_rows(int idx) const {
+    if (idx > this->index.size()-1) {
+        throw std::runtime_error("the target index is not in the data frame");
+    }
+    data_frame<T> data_frame_copy(this->data.row(idx), this->column_names, { this->index[idx]});
     return data_frame_copy;
 };
 
@@ -369,7 +386,7 @@ data_frame<T> data_frame<T>::dropna(const int axis, const std::string how) {
 }
 
 template <typename T>
-double& data_frame<T>::operator()(const int row, const int col) const {
+double& data_frame<T>::operator()(const int row, const int col){
     return this->data(row, col);
 };
 
@@ -384,7 +401,7 @@ data_frame<T> data_frame<T>::left_join(data_frame<T>& df2) const {
     std::vector<T> rhs_index = df2.get_index();
     std::unordered_set<T> index_set(rhs_index.begin(), rhs_index.end());
     //new data matrix
-    Eigen::MatrixXd new_data(this->data.rows(), this->data.cols() + df2.data.cols());
+    Eigen::MatrixXd new_data(this->rows(), this->cols() + df2.cols());
     for (int i = 0; i < this->index.size(); i++) {
         if (index_set.count(this->index[i]) > 0) {
             new_data.row(i) << this->data.row(i), df2.get_rows(this->index[i]).get_data();
@@ -393,46 +410,41 @@ data_frame<T> data_frame<T>::left_join(data_frame<T>& df2) const {
             new_data.row(i) << this->data.row(i), Eigen::MatrixXd::Constant(1, df2.data.cols(), std::numeric_limits<double>::quiet_NaN());
         }
     }
-
+  
     std::vector<std::string> column_names = this->column_names;
-    //   //duplicated column names handle
-    //   std::vector<std::string> df2_column_names = df2.get_column_names();
-
-    //   for (size_t i=0;i<df2_column_names.size();i++) {
-    //       for (size_t j=0;j<this->column_names.size();j++) {
-       //		if (df2_column_names[i] == column_names[j]) {
-       //			df2_column_names[i] = df2_column_names[i] + "_y";
-       //		}
-       //	}
-       //}
     column_names.insert(column_names.end(), df2.column_names.begin(), df2.column_names.end());
     data_frame data_frame_copy(new_data, column_names, this->index);
     return data_frame_copy;
 }
 
 template <typename T>
-void data_frame<T>::row_concat(data_frame<T>& df2) const {
+void data_frame<T>::row_concat(data_frame<T>& df2) {
     //empty df1
     if (this->data.size() == 0) {
-        return df2;
+        Eigen::MatrixXd tmp_data = df2.get_data();
+        this->set_data(tmp_data);
+        this->set_column_names(df2.get_column_names());
+        this->set_index(df2.get_index());
     }
     //columns compare
     std::set<std::string> set1(this->column_names.begin(), this->column_names.end());
-    std::set<std::string> set2(df2.column_names.begin(), df2.column_names.end());
-    std::set<std::string> union_set = std::set_union(set1.begin(), set1.end(), set2.begin(), set2.end());
-    std::vector<std::string> union_vec(union_set.begin(), union_set.end());
-    new_col_df1 = this->get_columns(union_vec);
-    new_col_df2 = df2.get_columns(union_vec);
+    std::vector<std::string> df2_col_names = df2.get_column_names();
+    std::set<std::string> set2(df2_col_names.begin(), df2_col_names.end());
+    std::vector<std::string> union_vec;
+    std::set_union(set1.begin(), set1.end(), set2.begin(), set2.end(),union_vec.begin());
+    //std::vector<std::string> union_vec(union_set.begin(), union_set.end());
+    data_frame<T> new_col_df1 = this->get_columns(union_vec);
+    data_frame<T> new_col_df2 = df2.get_columns(union_vec);
 
-    df1_mx = new_col_df1.get_data();
-    df2_mx = new_col_df2.get_data();
+    Eigen::MatrixXd df1_mx = new_col_df1.get_data();
+    Eigen::MatrixXd df2_mx = new_col_df2.get_data();
     //matrix row concat
     Eigen::MatrixXd new_data(df1_mx.cols(), df1_mx.rows() + df2_mx.rows());
     new_data << df1_mx.transpose(), df2_mx.transpose();
     new_data.transposeInPlace();
-    std::vector<T> new_index = this->index.insert(this->index.end(), new_col_df2.index.begin(), new_col_df2.index.end());
-    data_frame<T> data_frame_copy(new_data, union_vec, new_index);
-    this->data = data_frame_copy;
+    this->index.insert(this->index.end(), new_col_df2.index.begin(), new_col_df2.index.end());
+    this->data = new_data;
+    this->column_names = union_vec;
 }
 //mathematical functions
 template <typename T>
@@ -447,7 +459,7 @@ data_frame<T> data_frame<T>::exp() {
 
 template <typename T>
 data_frame<T> data_frame<T>::row_diff() {
-    Eigen::MatrixXd diffed_data(this->data.rows(), this->data.cols());
+    Eigen::MatrixXd diffed_data(this->rows(), this->cols());
     for (int i = 0; i < this->data.rows() - 1; i++) {
         diffed_data.row(i + 1) = this->data.row(i + 1) - this->data.row(i);
     }
