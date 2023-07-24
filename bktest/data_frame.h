@@ -256,15 +256,11 @@ data_frame<t> data_frame<t>::get_columns(const std::vector<std::string> _column_
         int col_idx = 0;
         while (col_idx < tmp_data.cols()) {
             if (_column_names[i] == col_names[col_idx]) {
-                std::cout<<_column_names[i]<<" found" << std::endl;
                 data_copy.col(i) = tmp_data.col(col_idx);
                 break;
             }
             ++col_idx;
         }
-        if (col_idx == tmp_data.cols()) {
-			std::cout<<_column_names[i]<<" not found" << std::endl;
-		}
     }
     data_frame<t> data_frame_copy(data_copy, _column_names, this->index);
     return data_frame_copy;

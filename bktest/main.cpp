@@ -42,7 +42,7 @@ int main() {
 	}
 	data_frame<boost::posix_time::ptime> price_ptdf = data_frame<std::string>::set_index(cmb_rmna_df, ptime2_idx);
 	//portfolio
-	portfolio<boost::posix_time::ptime> pfl(weight_ptdf, 0.0);
+	portfolio<boost::posix_time::ptime> pfl(weight_ptdf, 2000000.0);
 	pfl.run_test(price_ptdf);
 	return 0;
 }

@@ -12,6 +12,7 @@ private:
 	double cash;
 	data_frame<T> shares_df;
 	data_frame<T> gross_exposure_df;
+	data_frame<T> value_df;
 	data_frame<T> trade_price_df;
 	double liquidity; // value of cash + long position + proceeds from short position
 	double commission_rate_dbl;
@@ -100,7 +101,11 @@ void portfolio<T>::run_test(data_frame<T> price_df) {
 		std::vector<int> row_idx(end - beg + 2);
 		std::iota(row_idx.begin(), row_idx.end(), beg - 1);
 		data_frame<T> price_df_slice = price_df.get_rows(row_idx);
-		data_frame<T> ret_df = price_df_slice.log().row_diff().dropna();
+		Eigen::MatrixXd price = price_df_slice.get_data();
+		Eigen::MatrixXd ret = price;
+		ret.array().rowwise() /= price.row(0).array();
+		data_frame<T> ret_df = data_frame<T>(ret, price_df_slice.get_column_names(), price_df_slice.get_index());
+		data_frame<T> weight_df_slice = this->weights_df.get_rows(i);
 		//get new weight
 		Eigen::MatrixXd weight_mx = this->weights_df.get_rows(i).get_data();
 		Eigen::MatrixXd last_weight_mx;
@@ -149,11 +154,15 @@ void portfolio<T>::run_test(data_frame<T> price_df) {
 		//daily return compute
 		Eigen::MatrixXd value_mx = new_share_mx.cwiseProduct(trade_price_mx);
 		value_mx = ret_df.get_data()*value_mx.transpose();
-		data_frame<T> sub_value_df(value_mx, std::vector<std::string> {"ret"}, ret_df.get_index());
-		gross_exposure_df.row_concat(sub_value_df);
+		data_frame<T> sub_exp_df(value_mx, std::vector<std::string> {"ret"}, ret_df.get_index());
+		value_mx.array() +=  this->cash;
+		data_frame<T> sub_value_df(value_mx, std::vector<std::string> {"value"}, ret_df.get_index());
+		gross_exposure_df.row_concat(sub_exp_df);
+		value_df.row_concat(sub_value_df);
+
 	}
-	std::cout << "Gross Exposure:" << std::endl;
-	gross_exposure_df.head(gross_exposure_df.rows());
+	std::cout << "Portfolio Value:" << std::endl;
+	value_df.head(value_df.rows());
 }
 
 
