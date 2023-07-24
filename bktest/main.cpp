@@ -2,7 +2,7 @@
 
 int main() {
 	//alb
-	std::string path = "D:\\study\\data\\";
+	std::string path = "..\\data\\";
 	data_frame<std::string> alb = data_frame<std::string>::read_csv(path+"ALB.csv", 0).get_columns({ "Close" });
 	alb.head(10);
 	//goog
