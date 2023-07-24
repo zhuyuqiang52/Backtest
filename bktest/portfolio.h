@@ -37,6 +37,11 @@ portfolio<T>::portfolio(data_frame<T> weights, double _cash) {
 	this->cash = _cash;
 	this->weights_df = weights;
 	this->liquidity = _cash;
+	this->commission_rate_dbl = 0.0003;
+	this->tade_exposure_limit = 0.9;
+	this->proceeds = 0.0;
+	this->shares_df = weights.get_rows(0);
+	this->shares_df.set_data(Eigen::MatrixXd::Zero(1, weights.cols()));
 }
 
 template <typename T>
@@ -109,7 +114,10 @@ void portfolio<T>::run_test(data_frame<T> price_df) {
 
 
 		//compute current pfl's total value = cash(include proceeds from short selling) + positive asset_exposure
-		liquidity_cal();
+		if (this->gross_exposure_df.rows() > 0) {
+			liquidity_cal();
+		}
+		
 		//update aseet val for each assets by change of shares compared with last period
 		Eigen::MatrixXd sub_price_mx = price_df_slice.get_data().row(0);
 		Eigen::MatrixXd weight_chg_mx = weight_mx - last_weight_mx;
@@ -140,8 +148,8 @@ void portfolio<T>::run_test(data_frame<T> price_df) {
 		Eigen::MatrixXd new_share_mx = this->shares_df.get_rows({ this->shares_df.rows() - 1 }).get_data();
 		//daily return compute
 		Eigen::MatrixXd value_mx = new_share_mx.cwiseProduct(trade_price_mx);
-		value_mx = value_mx * ret_df.get_data();
-		data_frame<T> sub_value_df(value_mx, ret_df.get_column_names(), ret_df.get_index());
+		value_mx = ret_df.get_data()*value_mx.transpose();
+		data_frame<T> sub_value_df(value_mx, std::vector<std::string> {"ret"}, ret_df.get_index());
 		gross_exposure_df.row_concat(sub_value_df);
 	}
 	std::cout << "Gross Exposure:" << std::endl;
@@ -173,7 +181,14 @@ double portfolio<T>::trade(Eigen::MatrixXd prices, Eigen::MatrixXd& shares, bool
 template <typename T>
 void portfolio<T>::trade(Eigen::MatrixXd prices, Eigen::MatrixXd shares,T start_date) {
 	//suppose we trade at sub_price_mx price, may need further clarification on trading price
-	Eigen::MatrixXd last_shares = this->shares_df.get_rows({ this->shares_df.rows() - 1 }).get_data();
+	Eigen::MatrixXd last_shares;
+	if (this->shares_df.rows() > 0) {
+		last_shares = this->shares_df.get_rows({ this->shares_df.rows() - 1 }).get_data();
+	}
+	else {
+		last_shares = Eigen::MatrixXd::Constant(1,shares.cols(),0.0);
+	}
+	
 	double proceed = 0.0;
 	for (int i = 0; i < shares.cols(); i++) {
 		if (shares(0, i) > 0) {
@@ -198,7 +213,13 @@ void portfolio<T>::trade(Eigen::MatrixXd prices, Eigen::MatrixXd shares,T start_
 		}
 	}
 	//add new shares
-	Eigen::MatrixXd new_share_mx = shares + this->shares_df.get_rows({ this->shares_df.rows() - 1 }).get_data();
+	Eigen::MatrixXd new_share_mx;
+	if (this->shares_df.rows() == 0) {
+		new_share_mx = shares;
+	}
+	else {
+		new_share_mx = shares + this->shares_df.get_rows({ this->shares_df.rows() - 1 }).get_data();
+	}
 	data_frame<T> new_share_df(new_share_mx, this->shares_df.get_column_names(), std::vector<T> {start_date});
 	this->shares_df.row_concat(new_share_df);
 	//add new price

@@ -8,6 +8,7 @@
 #include <unordered_set>
 #include <boost/functional/hash.hpp>
 #include <set>
+#include <iostream>
 // T indicates the type of the index column
 //default to set index as a increasing vector with type size_t
 template <typename T = size_t>
@@ -248,19 +249,22 @@ void data_frame<T>::tail(const int n) const {
 //get columns basing on column names allowing non-exist columns which will be filled with nan
 template <typename t>
 data_frame<t> data_frame<t>::get_columns(const std::vector<std::string> _column_names) const {
-    std::vector<int> column_indices;
-    std::vector<std::string> col_names;
-    std::vector<std::string> col_names_unfound;
+    std::vector<std::string> col_names = this->column_names;
+    Eigen::MatrixXd tmp_data = this->get_data();
     Eigen::MatrixXd data_copy = Eigen::MatrixXd::Constant(this->rows(), _column_names.size(), std::numeric_limits<double>::quiet_NaN());
     for (size_t i = 0; i < _column_names.size(); ++i) {
         int col_idx = 0;
-        while (col_idx < this->column_names.size()) {
-            if (_column_names[i] == this->column_names[col_idx]) {
-                data_copy.col(i) = this->data.col(col_idx);
+        while (col_idx < tmp_data.cols()) {
+            if (_column_names[i] == col_names[col_idx]) {
+                std::cout<<_column_names[i]<<" found" << std::endl;
+                data_copy.col(i) = tmp_data.col(col_idx);
                 break;
             }
             ++col_idx;
         }
+        if (col_idx == tmp_data.cols()) {
+			std::cout<<_column_names[i]<<" not found" << std::endl;
+		}
     }
     data_frame<t> data_frame_copy(data_copy, _column_names, this->index);
     return data_frame_copy;
@@ -318,10 +322,10 @@ data_frame<T> data_frame<T>::get_rows(T index) const {
 
 template <typename T>
 data_frame<T> data_frame<T>::get_rows(int idx) const {
-    if (idx > this->index.size()-1) {
+    if ((idx > this->index.size() - 1) or (idx < 0)) {
         throw std::runtime_error("the target index is not in the data frame");
     }
-    data_frame<T> data_frame_copy(this->data.row(idx), this->column_names, { this->index[idx]});
+    data_frame<T> data_frame_copy(this->data.row(idx), this->column_names, std::vector<T>{ this->index[idx]});
     return data_frame_copy;
 };
 
@@ -427,12 +431,14 @@ void data_frame<T>::row_concat(data_frame<T>& df2) {
         this->set_index(df2.get_index());
     }
     //columns compare
-    std::set<std::string> set1(this->column_names.begin(), this->column_names.end());
+    std::vector<std::string> df1_col_names = this->column_names;
     std::vector<std::string> df2_col_names = df2.get_column_names();
-    std::set<std::string> set2(df2_col_names.begin(), df2_col_names.end());
+    // sort
+    std::sort(df1_col_names.begin(), df1_col_names.end());
+    std::sort(df2_col_names.begin(), df2_col_names.end());
     std::vector<std::string> union_vec;
-    std::set_union(set1.begin(), set1.end(), set2.begin(), set2.end(),union_vec.begin());
-    //std::vector<std::string> union_vec(union_set.begin(), union_set.end());
+    // cant put union result directly to a empty vector
+    std::set_union(df1_col_names.begin(), df1_col_names.end(), df2_col_names.begin(), df2_col_names.end(),std::back_inserter(union_vec));
     data_frame<T> new_col_df1 = this->get_columns(union_vec);
     data_frame<T> new_col_df2 = df2.get_columns(union_vec);
 

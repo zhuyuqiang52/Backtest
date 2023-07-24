@@ -2,20 +2,21 @@
 
 int main() {
 	//alb
-	data_frame<std::string> alb = data_frame<std::string>::read_csv("e:\\study\\22fall\\hf\\data\\hw1\\alb.csv", 0).get_columns({ "close" });
+	std::string path = "D:\\study\\data\\";
+	data_frame<std::string> alb = data_frame<std::string>::read_csv(path+"ALB.csv", 0).get_columns({ "Close" });
 	alb.head(10);
 	//goog
-	data_frame<std::string> goog = data_frame<std::string>::read_csv("e:\\study\\22fall\\hf\\data\\hw1\\goog.csv", 0).get_columns({ "close" });
+	data_frame<std::string> goog = data_frame<std::string>::read_csv(path+"GOOG.csv", 0).get_columns({ "Close" });
 	//goog.head(10);
-	data_frame<std::string> nio = data_frame<std::string>::read_csv("e:\\study\\22fall\\hf\\data\\hw1\\nio.csv", 0).get_columns({ "close" });
+	data_frame<std::string> nio = data_frame<std::string>::read_csv(path+"NIO.csv", 0).get_columns({ "Close" });
 	//nio.head(10);
-	data_frame<std::string> xom = data_frame<std::string>::read_csv("e:\\study\\22fall\\hf\\data\\hw1\\xom.csv", 0).get_columns({ "close" });
+	data_frame<std::string> xom = data_frame<std::string>::read_csv(path+"XOM.csv", 0).get_columns({ "Close" });
 	data_frame<std::string> cmb = goog.left_join(alb);
 	cmb = cmb.left_join(nio);
 	cmb = cmb.left_join(xom);
 	//std::cout<<"\nna removed"<<std::endl;
 	data_frame<std::string> cmb_rmna_df = cmb.dropna(0, "any");
-	cmb_rmna_df.set_column_names({ "goog","alb","nio","xom" });
+	cmb_rmna_df.set_column_names({ "GOOG","ALB","NIO","XOM" });
 	//cmb_rmna_df.head(300);
 	//portfolio setting
 	Eigen::MatrixXd weight_mx(4, 4);
@@ -23,7 +24,7 @@ int main() {
 		0.35, 0.15, 0.25, 0.25,
 		0.15, 0.25, 0.35, 0.25,
 		0.35, 0.35, 0.15, 0.15;
-	data_frame<std::string> weight_df(weight_mx, { "goog","alb","nio","xom" }, { "2021-09-14","2021-12-20","2022-03-01","2022-06-01" });
+	data_frame<std::string> weight_df(weight_mx, { "GOOG","ALB","NIO","XOM" }, { "2021-09-14","2021-12-20","2022-03-01","2022-06-01" });
 	weight_df.head(10);
 
 	//trasform index
